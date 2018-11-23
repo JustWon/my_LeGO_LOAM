@@ -1,5 +1,23 @@
 <launch>
-    
+    <!-- Labeled KITTI odometry dataset -->
+  <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0027.bag"/>
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0042.bag"/>  -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0034.bag"/> -->
+  <!-- line for 03 dataset -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0016.bag"/> -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0018.bag"/> -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0020.bag"/> -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0027.bag"/> -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0028.bag"/> -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0033.bag"/> -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0033.bag"/> -->
+
+    <!-- Unlabeled KITTI odometry dataset -->
+  <!-- <arg name="bag_file" value="'/home/dongwonshin/Desktop/kitti2bag/2011_10_03_drive_0027.bag'"/> -->
+
+    <!-- Unlabeled SR dataset -->
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/kitti2bag/2018-11-02-14-02-04.bag"/> -->
+
     <!--- Sim Time -->
     <param name="/use_sim_time" value="true" />
 
@@ -15,5 +33,7 @@
     <node pkg="lego_loam" type="featureAssociation" name="featureAssociation" output="screen"/>
     <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen"/>
     <node pkg="lego_loam" type="transformFusion"    name="transformFusion"    output="screen"/>
-
+    
+    <!-- rosbag player node -->
+    <node name="player" pkg="rosbag" type="play" output="screen" args=" -r 1 -s 0 --clock $(arg bag_file)"/>
 </launch>

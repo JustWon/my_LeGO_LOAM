@@ -35,6 +35,7 @@ private:
     ros::NodeHandle nh;
 
     ros::Subscriber subLaserCloud;
+    ros::Subscriber subLabeledCloud;
     
     ros::Publisher pubFullCloud;
     ros::Publisher pubFullInfoCloud;
@@ -54,6 +55,15 @@ private:
     pcl::PointCloud<PointType>::Ptr segmentedCloud;
     pcl::PointCloud<PointType>::Ptr segmentedCloudPure;
     pcl::PointCloud<PointType>::Ptr outlierCloud;
+
+    // Sync, merge two pointclouds
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> Double_Lidar_SyncPolicy;
+    typedef message_filters::Synchronizer<Double_Lidar_SyncPolicy> Double_Lidar_Sync;
+    boost::shared_ptr<Double_Lidar_Sync> double_lidar_sync;
+    message_filters::Subscriber<sensor_msgs::PointCloud2> *scan_sub1;
+    message_filters::Subscriber<sensor_msgs::PointCloud2> *scan_sub2;
+    sensor_msgs::PointCloud2 merged_cloud_msg_in;
+    ros::Publisher pubMergedCloud;
 
     PointType nanPoint;
 
@@ -80,7 +90,22 @@ public:
     ImageProjection():
         nh("~"){
 
-        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
+        int mode = 1;
+
+        if (mode == 0)
+            subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
+        else if (mode == 1)
+            subLabeledCloud = nh.subscribe<cloud_msgs::LabeledPointCloud>("/labeled_points", 1, &ImageProjection::LabeledcloudHandler, this);
+        else if (mode == 2)
+        {
+            scan_sub1 = new message_filters::Subscriber<sensor_msgs::PointCloud2> (nh, "/lidar1/velodyne_points", 1);
+            scan_sub2 = new message_filters::Subscriber<sensor_msgs::PointCloud2> (nh, "/lidar2/velodyne_points", 1);
+
+            double_lidar_sync.reset(new Double_Lidar_Sync(Double_Lidar_SyncPolicy(10), *scan_sub1, *scan_sub2));
+            double_lidar_sync->registerCallback(boost::bind(&ImageProjection::doubleCloudHandler, this, _1, _2));  
+
+            // and check the parameters
+        }
 
         pubFullCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_projected", 1);
         pubFullInfoCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_info", 1);
@@ -90,6 +115,8 @@ public:
         pubSegmentedCloudPure = nh.advertise<sensor_msgs::PointCloud2> ("/segmented_cloud_pure", 1);
         pubSegmentedCloudInfo = nh.advertise<cloud_msgs::cloud_info> ("/segmented_cloud_info", 1);
         pubOutlierCloud = nh.advertise<sensor_msgs::PointCloud2> ("/outlier_cloud", 1);
+
+        pubMergedCloud = nh.advertise<sensor_msgs::PointCloud2> ("/merged_cloud", 1);
 
         nanPoint.x = std::numeric_limits<float>::quiet_NaN();
         nanPoint.y = std::numeric_limits<float>::quiet_NaN();
@@ -162,6 +189,71 @@ public:
     void cloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
         copyPointCloud(laserCloudMsg);
+        findStartEndAngle();
+        projectPointCloud();
+        groundRemoval();
+        cloudSegmentation();
+        publishCloud();
+        resetParameters();
+    }
+
+    void mergeLidarPointCloud_SR(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg1, const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg2) 
+    {
+        // merge lidar scans
+        pcl::PointCloud<pcl::PointXYZI> laserCloudIn1;
+        pcl::fromROSMsg(*laserCloudMsg1, laserCloudIn1);
+
+        pcl::PointCloud<pcl::PointXYZI> laserCloudIn2;
+        pcl::fromROSMsg(*laserCloudMsg2, laserCloudIn2);
+
+        pcl::PointCloud<pcl::PointXYZI> transformed_laserCloudIn1;
+        pcl::PointCloud<pcl::PointXYZI> transformed_laserCloudIn2;
+
+        Eigen::Affine3f aff1 = Eigen::Affine3f::Identity();
+        // aff1.rotate(Eigen::AngleAxisf(M_PI, Eigen::Vector3f(3,0,-3)));
+        // aff1.translation() = Eigen::Vector3f(0.0,-0.375,1.76);
+
+        Eigen::Affine3f aff2 = Eigen::Affine3f::Identity();
+        // aff2.rotate(Eigen::AngleAxisf(M_PI, Eigen::Vector3f(-1,0,-3)));
+        // aff2.translation() = Eigen::Vector3f(0.0,-0.5,0.0);
+
+        pcl::transformPointCloud(laserCloudIn1, transformed_laserCloudIn1, aff1);
+        pcl::transformPointCloud(laserCloudIn2, transformed_laserCloudIn2, aff2);
+
+        *laserCloudIn = transformed_laserCloudIn1 + transformed_laserCloudIn2;
+
+        pcl::toROSMsg(*laserCloudIn, merged_cloud_msg_in);
+        cloudHeader = merged_cloud_msg_in.header;
+
+        // ROS_INFO("merged_cloud_msg_in.width : %d", merged_cloud_msg_in.width);
+    }
+
+    void doubleCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg1, const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg2){
+
+        mergeLidarPointCloud_SR(laserCloudMsg1, laserCloudMsg2);
+        findStartEndAngle();
+        projectPointCloud();
+        groundRemoval();
+        cloudSegmentation();
+        publishCloud();
+        resetParameters();
+    }
+
+    void copyLabeledPointCloud(const cloud_msgs::LabeledPointCloudConstPtr& labeledCloudMsg){
+
+        cloudHeader = labeledCloudMsg->header;
+        
+        pcl::PointCloud<pcl::PointXYZ> temp;
+        pcl::fromROSMsg(labeledCloudMsg->point_cloud, temp);
+        pcl::copyPointCloud(temp,*laserCloudIn);
+
+        pcl::toROSMsg(*laserCloudIn, merged_cloud_msg_in);
+        ROS_INFO("merged_cloud_msg_in.width : %d", merged_cloud_msg_in.width);
+    }
+
+    void LabeledcloudHandler(const cloud_msgs::LabeledPointCloudConstPtr& labeledCloudMsg){
+
+        copyLabeledPointCloud(labeledCloudMsg);
         findStartEndAngle();
         projectPointCloud();
         groundRemoval();
@@ -414,39 +506,43 @@ public:
 
         pcl::toROSMsg(*outlierCloud, laserCloudTemp);
         laserCloudTemp.header.stamp = cloudHeader.stamp;
-        laserCloudTemp.header.frame_id = "base_link";
+        laserCloudTemp.header.frame_id = frame_id;
         pubOutlierCloud.publish(laserCloudTemp);
 
         pcl::toROSMsg(*segmentedCloud, laserCloudTemp);
         laserCloudTemp.header.stamp = cloudHeader.stamp;
-        laserCloudTemp.header.frame_id = "base_link";
+        laserCloudTemp.header.frame_id = frame_id;
         pubSegmentedCloud.publish(laserCloudTemp);
+
+        if (pubMergedCloud.getNumSubscribers() != 0){
+            pubMergedCloud.publish(merged_cloud_msg_in);
+        }
 
         if (pubFullCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*fullCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = frame_id;
             pubFullCloud.publish(laserCloudTemp);
         }
 
         if (pubGroundCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*groundCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = frame_id;
             pubGroundCloud.publish(laserCloudTemp);
         }
 
         if (pubSegmentedCloudPure.getNumSubscribers() != 0){
             pcl::toROSMsg(*segmentedCloudPure, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = frame_id;
             pubSegmentedCloudPure.publish(laserCloudTemp);
         }
 
         if (pubFullInfoCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*fullInfoCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = frame_id;
             pubFullInfoCloud.publish(laserCloudTemp);
         }
     }

@@ -7,12 +7,14 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   std_msgs
   nav_msgs
+  sensor_msgs
 )
 
 add_message_files(
   DIRECTORY msg
   FILES
   cloud_info.msg
+  LabeledPointCloud.msg
 )
 
 generate_messages(
@@ -20,6 +22,7 @@ generate_messages(
   geometry_msgs
   std_msgs
   nav_msgs
+  sensor_msgs
 )
 
 

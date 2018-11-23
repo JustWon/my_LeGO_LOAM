@@ -9,6 +9,7 @@
 #include <nav_msgs/Odometry.h>
 
 #include "cloud_msgs/cloud_info.h"
+#include "cloud_msgs/LabeledPointCloud.h"
 
 #include <opencv/cv.h>
 
@@ -44,18 +45,36 @@
 #include <thread>
 #include <mutex>
 
+#include <ros/console.h>
+
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
+
 #define PI 3.14159265
 
 using namespace std;
 
 typedef pcl::PointXYZI  PointType;
 
+// for LeGO-SLAM dataset
 extern const int N_SCAN = 16;
 extern const int Horizon_SCAN = 1800;
 extern const float ang_res_x = 0.2;
 extern const float ang_res_y = 2.0;
 extern const float ang_bottom = 15.0+0.1;
 extern const int groundScanInd = 7;
+string frame_id = "origin";
+
+// KITTI odometry dataset
+// extern const int N_SCAN = 64;
+// extern const int Horizon_SCAN = 1800;
+// extern const float ang_res_x = 0.2;
+// extern const float ang_res_y = 0.427;
+// extern const float ang_bottom = 24.9;
+// extern const int groundScanInd = 50;
+// string frame_id = "origin";
 
 extern const bool loopClosureEnableFlag = false;
 extern const double mappingProcessInterval = 0.3;
@@ -63,7 +82,8 @@ extern const double mappingProcessInterval = 0.3;
 extern const float scanPeriod = 0.1;
 extern const int systemDelay = 0;
 extern const int imuQueLength = 200;
-extern const string imuTopic = "/imu/data";
+// extern const string imuTopic = "/imu/data";
+extern const string imuTopic = "/kitti/oxts/imu";
 
 
 extern const float sensorMountAngle = 0.0;
@@ -81,7 +101,7 @@ extern const float edgeThreshold = 0.1;
 extern const float surfThreshold = 0.1;
 extern const float nearestFeatureSearchSqDist = 25;
 
-extern const float surroundingKeyframeSearchRadius = 50.0;
+extern const float surroundingKeyframeSearchRadius = 100.0;
 extern const int   surroundingKeyframeSearchNum = 50;
 
 extern const float historyKeyframeSearchRadius = 5.0;

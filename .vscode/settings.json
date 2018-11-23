@@ -1,0 +1,22 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "bitset": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp",
+        "*.ipp": "cpp",
+        "valarray": "cpp",
+        "chrono": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "vector": "cpp",
+        "list": "cpp",
+        "core": "cpp",
+        "numericaldiff": "cpp"
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/dongwonshin/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/home/dongwonshin/segmap_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/kinetic/lib/python2.7/dist-packages"
+    ]
+}
