@@ -1,8 +1,8 @@
 <launch>
     <!-- Labeled KITTI odometry dataset -->
-  <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0027.bag"/>
+  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0027.bag"/> -->
   <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0042.bag"/>  -->
-  <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0034.bag"/> -->
+  <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_10_03_drive_0034.bag"/>
   <!-- line for 03 dataset -->
   <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0016.bag"/> -->
   <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/KITTI_odometry_dataset/2011_09_30_drive_0018.bag"/> -->
@@ -18,6 +18,8 @@
     <!-- Unlabeled SR dataset -->
   <!-- <arg name="bag_file" value="/home/dongwonshin/Desktop/kitti2bag/2018-11-02-14-02-04.bag"/> -->
 
+    <rosparam command="load" file="$(find lego_loam)/launch/test.yaml"/>
+
     <!--- Sim Time -->
     <param name="/use_sim_time" value="true" />
 
@@ -26,7 +28,7 @@
 
     <!--- TF -->
     <node pkg="tf" type="static_transform_publisher" name="camera_init_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /camera_init 10" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /base_link   10" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /origin   10" />
 
     <!--- LeGO-LOAM -->    
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen"/>

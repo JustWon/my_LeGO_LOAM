@@ -86,16 +86,31 @@ private:
     uint16_t *queueIndX;
     uint16_t *queueIndY;
 
+    struct LeGO_LOAM_Params {
+        int mode = 0;
+
+        int N_SCAN;
+        int Horizon_SCAN;
+        float ang_res_x;
+        float ang_res_y;
+        float ang_res_bottom;
+        int groundScanInd;
+    };
+
+    LeGO_LOAM_Params params_;
+
 public:
     ImageProjection():
         nh("~"){
 
-        int mode = 1;
+        getParameters();
+
+        int mode = params_.mode;
 
         if (mode == 0)
-            subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
-        else if (mode == 1)
             subLabeledCloud = nh.subscribe<cloud_msgs::LabeledPointCloud>("/labeled_points", 1, &ImageProjection::LabeledcloudHandler, this);
+        else if (mode == 1)
+            subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
         else if (mode == 2)
         {
             scan_sub1 = new message_filters::Subscriber<sensor_msgs::PointCloud2> (nh, "/lidar1/velodyne_points", 1);
@@ -125,6 +140,27 @@ public:
 
         allocateMemory();
         resetParameters();
+    }
+
+    void getParameters()
+    {
+        const std::string ns1 = "/LeGO_LOAM/ImageProjection";
+        nh.getParam(ns1 + "/mode", params_.mode);
+
+        const std::string ns2 = "/LeGO_LOAM/LIDAR_sensor";
+        nh.getParam(ns2 + "/N_SCAN", params_.N_SCAN);
+        nh.getParam(ns2 + "/Horizon_SCAN", params_.Horizon_SCAN);
+        nh.getParam(ns2 + "/ang_res_x", params_.ang_res_x);
+        nh.getParam(ns2 + "/ang_res_y", params_.ang_res_y);
+        nh.getParam(ns2 + "/ang_res_bottom", params_.ang_res_bottom);
+        nh.getParam(ns2 + "/groundScanInd", params_.groundScanInd);
+
+        // N_SCAN = params_.N_SCAN;
+        // Horizon_SCAN = params_.Horizon_SCAN;
+        // ang_res_x = params_.ang_res_x;
+        // ang_res_y = params_.ang_res_y;
+        // ang_res_bottom = params_.ang_res_bottom;
+        // groundScanInd = params_.groundScanInd;
     }
 
     void allocateMemory(){
@@ -197,7 +233,8 @@ public:
         resetParameters();
     }
 
-    void mergeLidarPointCloud_SR(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg1, const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg2) 
+    void mergeLidarPointCloud_SR(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg1, 
+                                 const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg2) 
     {
         // merge lidar scans
         pcl::PointCloud<pcl::PointXYZI> laserCloudIn1;
@@ -210,12 +247,9 @@ public:
         pcl::PointCloud<pcl::PointXYZI> transformed_laserCloudIn2;
 
         Eigen::Affine3f aff1 = Eigen::Affine3f::Identity();
-        // aff1.rotate(Eigen::AngleAxisf(M_PI, Eigen::Vector3f(3,0,-3)));
-        // aff1.translation() = Eigen::Vector3f(0.0,-0.375,1.76);
-
         Eigen::Affine3f aff2 = Eigen::Affine3f::Identity();
         // aff2.rotate(Eigen::AngleAxisf(M_PI, Eigen::Vector3f(-1,0,-3)));
-        // aff2.translation() = Eigen::Vector3f(0.0,-0.5,0.0);
+        aff2.translation() = Eigen::Vector3f(0.0,-0.85,0.0);
 
         pcl::transformPointCloud(laserCloudIn1, transformed_laserCloudIn1, aff1);
         pcl::transformPointCloud(laserCloudIn2, transformed_laserCloudIn2, aff2);
@@ -228,7 +262,8 @@ public:
         // ROS_INFO("merged_cloud_msg_in.width : %d", merged_cloud_msg_in.width);
     }
 
-    void doubleCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg1, const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg2){
+    void doubleCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg1, 
+                            const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg2){
 
         mergeLidarPointCloud_SR(laserCloudMsg1, laserCloudMsg2);
         findStartEndAngle();
@@ -242,13 +277,11 @@ public:
     void copyLabeledPointCloud(const cloud_msgs::LabeledPointCloudConstPtr& labeledCloudMsg){
 
         cloudHeader = labeledCloudMsg->header;
-        
         pcl::PointCloud<pcl::PointXYZ> temp;
         pcl::fromROSMsg(labeledCloudMsg->point_cloud, temp);
-        pcl::copyPointCloud(temp,*laserCloudIn);
-
-        pcl::toROSMsg(*laserCloudIn, merged_cloud_msg_in);
-        ROS_INFO("merged_cloud_msg_in.width : %d", merged_cloud_msg_in.width);
+        pcl::copyPointCloud(temp, *laserCloudIn);
+        
+        pcl::toROSMsg(temp, merged_cloud_msg_in); 
     }
 
     void LabeledcloudHandler(const cloud_msgs::LabeledPointCloudConstPtr& labeledCloudMsg){

@@ -5,8 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Map Cloud1/Autocompute Value Bounds1
-        - /Merged Cloud1
-        - /Merged Cloud1/Status1
       Splitter Ratio: 0.675000012
     Tree Height: 815
   - Class: rviz/Selection
@@ -100,8 +98,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 9.28161812
-        Min Value: -7.09626389
+        Max Value: 66.3372955
+        Min Value: -6.09196329
         Value: true
       Axis: Y
       Channel Name: intensity
@@ -142,7 +140,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 20
+      Max Intensity: 665
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: Trajectory
@@ -150,7 +148,7 @@ Visualization Manager:
       Queue Size: 1
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.200000003
+      Size (m): 1
       Style: Flat Squares
       Topic: /key_pose_origin
       Unreliable: false
@@ -202,25 +200,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 87.0810165
+      Distance: 2026.19482
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 434.464233
+        Y: -249.246109
+        Z: -57.2824097
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.23479629
+      Pitch: 1.20979667
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 3.21042132
+      Yaw: 3.41042757
     Saved: ~
 Window Geometry:
   Displays:
